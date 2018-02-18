@@ -14,6 +14,7 @@ strategies
 rules
   
   strip-types: Cast(_, a) -> a
+  strip-legacy: Legacy(a) -> a
   
   legacy: Number(a)					-> Legacy(KNumber(a))
   legacy: Div(Legacy(a), Legacy(b))	-> Legacy(KDiv(a, b))
@@ -23,18 +24,26 @@ rules
   legacy: Identifier(name) -> KIdentifier(name)
   
   legacy: DesugaredClass(name, fields, methods) -> KDeclareIdentifierScoped("declare", "global", <conc-strings>("class_", name), KDefaultPreset("to",
-      KFunctionCall(KIdentifier("lexicon"), <flatten-list> ["new", KAnonymousFunction([
-      	KSet(KIdentifier("result"), KFunctionCall(KIdentifier("lexicon"), []), ".")
-      ]), methods])
+      KFunctionCall(KIdentifier("lexicon"), <flatten-list> ["\"new\"", KAnonymousFunction([
+        KSet(KIdentifier("prototype"), KIdentifier(<conc-strings>("class_", name)), "."),
+        KSet(KIdentifier("result"), KFunctionCall(KIdentifier("lexicon"), []), "."),
+      	KBlock(<flatten-list> [
+      		<map(initialize-class)> fields,
+      		<map(initialize-class)> methods
+      	]),
+      	KReturn(Some(KIdentifier("result")), ".")
+      ]), <map(define-methods)> methods])
     ), ".")
     
-  initialize_class: Field(_, name, value) -> [name, <legacy> value]
-  initialize_class: Method(_, name, _, _) -> [name, KFunctionCall(KSuffix(KIdentifier("foo"), "bind"), [Identifier("result")])]
+  initialize-class: Field(_, name, value) -> KSet(KArrayIndex(KIdentifier("result"), KString(<conc-strings>("\"", name, "\""))), <strip-legacy; innermost(legacy)> value, ".")
+  initialize-class: Method(_, name, _, _) -> KSet(KArrayIndex(KIdentifier("result"), KString(<conc-strings>("\"", name, "\""))), KFunctionCall(KSuffix(KArrayIndex(KIdentifier("prototype"), KString(<conc-strings>("\"", name, "\""))), "bind"), [KIdentifier("result")]), ".")
   
-  legacy: Method(_, name, params, instructions) -> [name, KAnonymousFunction(<flatten-list>[params, [<flatten-legacy-blocks>instructions]])]
+  define-methods: Method(_, name, params, instructions) -> [KString(<conc-strings>("\"", name, "\"")), KAnonymousFunction(<flatten-list>[params, [<flatten-legacy-blocks>instructions]])]
     where not( <?[LegacyBlock(_)]> instructions)
+  
+ // legacy: Method(_, name, params, instructions) -> 
   legacy: Parameter(_, name) -> KDeclareParameter(None(), [KDefaultDefinition(name, None())], ".")
-  legacy: Field(_, name, Legacy(value)) -> [name, value]
+ // legacy: Field(_, name, Legacy(value)) -> [name, value]
   
   //create-constructor(|classname): [] -> []
   //create-constructor(|classname): [name, KAnonymousFunction(inst) | rest] -> [ KSet(name, KFunctionCall(KSuffix(KArrayIndex(KIdentifier(classname), KString(name)), "bind"), [KIdentifier("result")]), ".")]
