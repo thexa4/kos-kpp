@@ -23,8 +23,10 @@ signature
   constructors
     NumberT :  Type
     StringT : Type
-    UnitT : Type
+    ClassT : Type
+    TypeT : Type
     Dynamic : Type
+    FuncT : list(Type) * Type -> Type
 
   constraint generator
   
@@ -44,14 +46,24 @@ rules
     distinct/name D(topScope)/Class | note "Duplicate class definition" @NAMES,
   	Class { classname } <- topScope,
     new classScope,
+    classScope ---> topScope,
     Map1 [[ definitions ^ (classScope) ]].
   
-  [[ Method(methodType, methodName, _, methodInstructions) ^ (classScope) ]] :=
+  [[ Method(methodType, methodName, parameters, methodInstructions) ^ (classScope) ]] :=
     distinct/name D(classScope)/Method | note "Duplicate identifier" @NAMES,
     Method { methodName } <- classScope,
-    Method { methodName } : methodType,
+    Method { methodName } : FuncT(paramTypes, methodType),
+    StripParameters[[ parameters ^ () : paramTypes ]],
     Map1 [[ methodInstructions ^ (methodScope) ]],
-    new methodScope.
+    new methodScope,
+    methodScope ---> classScope.
+  
+  StripParameters [[ [] ^ () : [] ]].
+  StripParameters [[ [elem | rest] ^ () : [eType | restTypes] ]] :=
+  	StripParameters [[ elem ^ () : eType ]],
+  	StripParameters [[ rest ^ () : restTypes ]].
+
+  StripParameters [[ Parameter(type, _) ^ () : type ]].
     
   [[ Field(fieldType, fieldName, fieldExpr) ^ (classScope) ]] :=
     distinct/name D(classScope)/Field | note "Duplicate identifier" @NAMES,
@@ -59,7 +71,8 @@ rules
     fieldScope -P-> classScope,
     Field { fieldName} : fieldType,
     [[ fieldExpr ^ (classScope) : fieldType ]],
-    new fieldScope.
+    new fieldScope,
+    fieldScope ---> classScope.
   
   [[ Declaration(varType, varName) ^ (methodScope) ]] :=
     distinct/name D(methodScope)/Variable | note "Duplicate identifier" @NAMES,
@@ -78,14 +91,29 @@ rules
     distinct/name D(methodScope)/Variable | note "Duplicate identifier" @NAMES,
     Variable { varName } <- methodScope,
     Variable { varName } : varType,
-    [[ valueExpr ^ (methodScope) : varType ]],
+    [[ valueExpr ^ (methodScope) : valType ]],
+    [[ valType ^ () : varType ]],
     new varScope.
+    
+  [[ Identifier(className) ^ (methodScope) : TypeT() ]] :=
+  	Class { className } -> methodScope,
+    Class { className } |-> declaration.
+    
+  [[ Identifier(varName) ^ (methodScope) : declarationType ]] :=
+  	Variable { varName } -> methodScope,
+    Variable { varName } |-> declaration,
+    declaration : declarationType.
   
   [[ Using(_) ^ (topScope) ]] := false.
   
   [[ Number(_) ^ (_) : NumberT() ]].
   [[ String(_) ^ (_) : StringT() ]].
   [[ LegacyBlock(_) ^ (_) ]].
+  
+  [[ NumberT() ^ () : Dynamic() ]].
+  [[ StringT() ^ () : Dynamic() ]].
+  [[ TypeT() ^ () : DynamicT() ]].
+  [[ CustomT(_) ^ () : Dynamic() ]].
   
 rules // instructions
 

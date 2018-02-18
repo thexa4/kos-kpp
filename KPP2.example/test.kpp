@@ -1,21 +1,18 @@
 using "a"
 
-class test {
+class Test3 {
+
+}
+
+class Test {
   number a = 2;
 
   number foo(number a) {
-    extern "KOS" {
-    		parameter foo.
-    		set foo to a().
-    		print "Hello World".
-    		return "1".
-    }
-    number b = 3;
-    b = 3 / 1;
+    
   }
 }
 
-class test2 {
+class Test2 {
   number b = 2;
   
   number foo() {

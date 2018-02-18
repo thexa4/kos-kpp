@@ -43,6 +43,8 @@ context-free syntax
   Type.StructureT = [struct]
   Type.UnitT = [unit]
   Type.DynamicT = [dynamic]
+  Type.TypeT = [type]
+  Type.FuncT = [({Type ", "}) -> {Type}]
   
   Type.Option = [[Type]?]
   Type.CustomT = [[ID]] {avoid}
