@@ -1,21 +1,20 @@
 using "a"
 
-class Test3 {
-
+class Test2 {
+	number foo = 1;
+	
+	string bar()
+	{
+		
+	}
 }
 
 class Test {
-  number a = 2;
+  dynamic test = "asdf";
 
-  number foo(number a) {
+  number bar(number a) {
+    dynamic d = Test2.bar;
     
-  }
-}
-
-class Test2 {
-  number b = 2;
-  
-  number foo() {
-  	
+    //dynamic c = 1;
   }
 }

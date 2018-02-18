@@ -22,6 +22,7 @@ rules
   legacy: Declaration(_, name) 			-> LegacyBlock([KDeclareIdentifierUnscoped("declare", name, KDefaultPreset("to", KNumber("0")), ".")])
   legacy: Assignment(name, Legacy(v)) 	-> LegacyBlock([KSet(name, v, ".")])
   legacy: Identifier(name) -> KIdentifier(name)
+  legacy: Assignment(_, _) -> LegacyBlock([])
   
   legacy: DesugaredClass(name, fields, methods) -> KDeclareIdentifierScoped("declare", "global", <conc-strings>("class_", name), KDefaultPreset("to",
       KFunctionCall(KIdentifier("lexicon"), <flatten-list> ["\"new\"", KAnonymousFunction([

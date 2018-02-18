@@ -24,7 +24,7 @@ signature
     NumberT :  Type
     StringT : Type
     ClassT : Type
-    TypeT : Type
+    TypeT : Class -> Type
     Dynamic : Type
     FuncT : list(Type) * Type -> Type
 
@@ -45,7 +45,8 @@ rules
   [[ Class(classname, definitions) ^ (topScope) ]] :=
     distinct/name D(topScope)/Class | note "Duplicate class definition" @NAMES,
   	Class { classname } <- topScope,
-    new classScope,
+  	new classScope,
+  	Class { classname } ===> classScope,
     classScope ---> topScope,
     Map1 [[ definitions ^ (classScope) ]].
   
@@ -70,7 +71,8 @@ rules
     Field { fieldName } <- classScope,
     fieldScope -P-> classScope,
     Field { fieldName} : fieldType,
-    [[ fieldExpr ^ (classScope) : fieldType ]],
+    [[ fieldExpr ^ (classScope) : exprType ]],
+    [[ exprType ^ () : fieldtype ]],
     new fieldScope,
     fieldScope ---> classScope.
   
@@ -84,7 +86,7 @@ rules
     Variable { varName } -> methodScope,
     Variable { varName } |-> declaration,
     declaration : declarationType,
-    declarationType == varType,
+    [[ declarationType ^ () : varType ]],
     [[ valueExpr ^ (methodScope) : varType ]].
   
   [[ DeclarationAssigned(varType, varName, valueExpr) ^ (methodScope) ]] :=
@@ -95,7 +97,7 @@ rules
     [[ valType ^ () : varType ]],
     new varScope.
     
-  [[ Identifier(className) ^ (methodScope) : TypeT() ]] :=
+  [[ Identifier(className) ^ (methodScope) : TypeT(declaration) ]] :=
   	Class { className } -> methodScope,
     Class { className } |-> declaration.
     
@@ -104,16 +106,36 @@ rules
     Variable { varName } |-> declaration,
     declaration : declarationType.
   
+  [[ Accessor(victim, _, propertyName) ^ (methodScope) : fieldType ]] :=
+    [[ victim ^ (methodScope) : victimType ]],
+    victimType == TypeT(classDeclaration),
+    classDeclaration ?===> classScope,
+    new accessorScope,
+    accessorScope ---> classScope,
+    Field { propertyName } -> accessorScope,
+    Field { propertyName } |-> fieldDeclaration,
+    fieldDeclaration : fieldType.
+    
+  [[ Accessor(victim, _, propertyName) ^ (methodScope) : methodType ]] :=
+    [[ victim ^ (methodScope) : victimType ]],
+    victimType == TypeT(classDeclaration),
+    classDeclaration ?===> classScope,
+    new accessorScope,
+    accessorScope ---> classScope,
+    Method { propertyName } -> accessorScope,
+    Method { propertyName } |-> methodDeclaration,
+    methodDeclaration : methodType.
+    
   [[ Using(_) ^ (topScope) ]] := false.
   
   [[ Number(_) ^ (_) : NumberT() ]].
   [[ String(_) ^ (_) : StringT() ]].
   [[ LegacyBlock(_) ^ (_) ]].
   
-  [[ NumberT() ^ () : Dynamic() ]].
-  [[ StringT() ^ () : Dynamic() ]].
+  [[ NumberT() ^ () : DynamicT() ]].
+  [[ StringT() ^ () : DynamicT() ]].
   [[ TypeT() ^ () : DynamicT() ]].
-  [[ CustomT(_) ^ () : Dynamic() ]].
+  [[ CustomT(_) ^ () : DynamicT() ]].
   
 rules // instructions
 

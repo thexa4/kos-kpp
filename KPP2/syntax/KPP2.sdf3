@@ -5,6 +5,9 @@ imports
   Common
   KOS
 
+lexical syntax
+  DOT = [\.]
+
 context-free start-symbols
   
   Start
@@ -67,6 +70,8 @@ context-free syntax
   Expr.Cast = [([Type])[Expr]]
   Expr.String = [[STRING]]
   Expr.Number = [[NUMBER]]
+  
+  Expr.Accessor = [[Expr][DOT][ID]] {left}
   
   Expr.Identifier = [[ID]]
   
