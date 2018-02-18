@@ -2,7 +2,7 @@ using "a"
 
 class Test2 {
 	number foo = 1;
-	
+
 	string bar()
 	{
 		
@@ -10,11 +10,15 @@ class Test2 {
 }
 
 class Test {
-  dynamic test = "asdf";
 
-  number bar(number a) {
-    dynamic d = Test2.bar;
+  number bar() {
+    number d = 2;
+    d = "asdf";
+  }
+  //number bar(number a) {
+    //number d = 2;
+    //d = Test2.alloc;
     
     //dynamic c = 1;
-  }
+  //}
 }

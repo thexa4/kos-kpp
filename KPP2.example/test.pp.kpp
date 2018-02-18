@@ -1,7 +1,0 @@
-using "a"
-
-class Test {
-  number foo( number a ) {
-    dynamic d = c->a;
-  }
-}
