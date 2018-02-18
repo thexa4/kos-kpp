@@ -8,7 +8,6 @@ signature
 
   sorts
     Void
-    Coerce
 
   namespaces
     Module
@@ -107,14 +106,6 @@ rules
   [[ Identifier(varName) ^ (methodScope) : declaration ]] :=
   	Identifier { varName } -> methodScope,
     Identifier { varName } |-> declaration.
-  
-  [[ ClassLookup(classDeclaration, propertyName) ^ () : propertyType ]] :=
-  	classDeclaration ?===> classScope,
-    new accessorScope,
-    accessorScope ---> classScope,
-    Field { propertyName } -> accessorScope,
-    Field { propertyName } |-> fieldDeclaration,
-    fieldDeclaration : propertyType.
   
   [[ Accessor(victim, _, propertyName) ^ (methodScope) : fieldType ]] :=
     [[ victim ^ (methodScope) : reference ]],
