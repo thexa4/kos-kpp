@@ -1,0 +1,20 @@
+module compile
+
+imports
+  
+  nabl2shared
+  nabl2runtime
+  
+  static-semantics
+  kscript
+  desugar
+
+rules // Desugar
+
+  rule-compile: (_, _, ast, path, project-path) -> (filename, result)
+    with filename := <guarantee-extension(|"k")> path
+       ; result   := <strat-compile> ast
+   
+strategies
+  strat-compile = strat-desugar; transform-kscript; pp-debug
+

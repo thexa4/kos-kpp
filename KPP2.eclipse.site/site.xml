@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/KPP2.eclipse.feature_0.1.0.qualifier.jar" id="KPP2.eclipse.feature" version="0.1.0.qualifier">
+      <category name="KPP2"/>
+   </feature>
+   <category-def name="KPP2" label="KPP2 language Eclipse plugin">
+      <description>
+         KPP2 language Eclipse plugin.
+      </description>
+   </category-def>
+</site>

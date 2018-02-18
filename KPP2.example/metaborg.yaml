@@ -1,0 +1,13 @@
+---
+id: nl.maxmaton:KPP2.example:0.1.0-SNAPSHOT
+name: KPP2
+dependencies:
+  compile:
+  - nl.maxmaton:KPP2:0.1.0-SNAPSHOT
+debug:
+  typesmart: false
+runtime:
+  nabl2:
+    debug: analysis files
+build:
+  useBuildSystemSpec: true

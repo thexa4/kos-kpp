@@ -1,0 +1,143 @@
+module KOS
+
+imports
+	Common
+
+sorts
+	KExpr
+	KInstruction
+
+// Based on https://github.com/KSP-KOS/KOS/blob/develop/src/kOS.Safe/Compilation/KS/kRISC.tpg
+
+lexical syntax
+
+	NUMBER = [0-9]+("."[0-9]+)?([eE]"-"?[0-9])?
+	KEOI = "." {ignore}
+	DECLARE = "declare" {case-insensitive}
+	SCOPE = ("global"|"local") {case-insensitive}
+	
+	TOIS = ("to"|"is") {case-insensitive}
+	
+	VOLUMEFILE = ("volume"|"file") {case-insensitive}
+
+context-free syntax //values
+	KExpr = KValue
+	KValue.KTrue = <true>
+	KValue.KFalse = <false>
+	
+	KValue.KNumber = <<NUMBER>>
+	KValue.KIdentifier = <<ID>>
+	KValue.KString = <<STRING>>
+
+context-free syntax
+	
+	KExpr = <( <KExpr> )> {bracket}
+	
+	
+	
+	// Operators
+	KExpr.KAdd = <<KExpr> + <KExpr>> {assoc}
+	KExpr.KSub = <<KExpr> - <KExpr>> {assoc}
+	
+	KExpr.KMul = <<KExpr> * <KExpr>> {assoc}
+	KExpr.KDiv = <<KExpr> / <KExpr>> {assoc}
+	
+	KExpr.KAnd = <<KExpr> and <KExpr>> {left}
+	KExpr.KOr = <<KExpr> or <KExpr>> {left}
+	KExpr.KNot = <not <KExpr>>
+	KExpr.KNeg = <-<KExpr>>
+	
+	KExpr.KCmpNot = [[KExpr] <> [KExpr]] {non-assoc}
+	KExpr.KCmpEq = [[KExpr] = [KExpr]] {non-assoc}
+	KExpr.KCmpEqLess = [[KExpr] >= [KExpr]] {non-assoc}
+	KExpr.KCmpEqMore = [[KExpr] <= [KExpr]] {non-assoc}
+	KExpr.KCmpLess = [[KExpr] < [KExpr]] {non-assoc}
+	KExpr.KCmpMore = [[KExpr] > [KExpr]] {non-assoc}
+	
+	//Functions
+	KExpr.KArrayIndex = <<KExpr>[ <KExpr> ]> {left}
+	KExpr.KFunctionCall = <<KExpr>( <{KExpr ", "}*> )> {left}
+	KExpr.KSuffix = <<KExpr>:<ID>> {left}
+	KExpr.KAnonymousFunction = <{
+		<{KInstruction "\n"}*>
+	}>
+context-free priorities
+
+	{
+		left: KExpr.KSuffix
+	} > {
+		left: KExpr.KFunctionCall
+	} > {
+		KExpr.KNot KExpr.KNeg
+	} > {
+		left: KExpr.KMul KExpr.KDiv
+	} > {
+		left: KExpr.KAdd KExpr.KSub
+	} > {
+		KExpr.KCmpNot KExpr.KCmpEq KExpr.KCmpEqLess KExpr.KCmpEqMore KExpr.KCmpLess KExpr.KCmpMore 
+	} > {
+		left: KExpr.KAnd
+	} > {
+		left: KExpr.KOr
+	}
+
+context-free syntax
+
+	KInstruction = KBlock
+	KBlock.KBlock = <
+		{
+			<{KInstruction "\n"}*>
+		}
+	>
+	KInstruction.KEmpty = <<KEOI>>
+	KInstruction.KSet = <set <KExpr> to <KExpr><KEOI>> {case-insensitive}
+	KInstruction.KIf = <if <KExpr> <KInstruction>> {case-insensitive}
+	KInstruction.KIfElse = <if <KExpr> <KInstruction> else <KInstruction>> {case-insensitive}
+	
+	KInstruction.KUntil = <until <KExpr> <KInstruction>> {case-insensitive}
+	KInstruction.KFromLoop = <from { <KInstruction+> } until <KExpr> step { <KInstruction+> } do <KInstruction>> {case-insensitive}
+	KInstruction.KUnlockIdentifier = <unlock <ID><KEOI>> {case-insensitive}
+	KInstruction.KUnlockAll = <unlock all<KEOI>> {case-insensitive}
+
+	KInstruction.KPrint = <print <KExpr><KEOI>> {case-insensitive}
+	KInstruction.KPrintAt = <print <KExpr> at {<INT>,<INT>}<KEOI>> {case-insensitive}
+	
+	KInstruction.KOn = <on <ID> <KInstruction>> {case-insensitive}
+	KInstruction.KToggle = <toggle <ID><KEOI>> {case-insensitive}
+	KInstruction.KWait = <wait <KExpr><KEOI>> {case-insensitive}
+	KInstruction.KWaitUntil = <wait until <KExpr><KEOI>> {case-insensitive, prefer}
+	KInstruction.KWhen = <when <KExpr> then <KInstruction>> {case-insensitive}
+	
+	KInstruction.KSetOn = <<ID> on<KEOI>> {case-insensitive}
+	KInstruction.KSetOff = <<ID> off<KEOI>> {case-insensitive}
+	
+	KInstruction.KStage = <stage<KEOI>> {case-insensitive}
+	KInstruction.KClear = <clearscreen<KEOI>> {case-insensitive}
+	
+	KInstruction.KAddNode = <add <KExpr><KEOI>> {case-insensitive}
+	KInstruction.KRemoveNode = <remove <KExpr><KEOI>> {case-insensitive}
+	
+	KInstruction.KLog = <log <KExpr> to <KExpr><KEOI>> {case-insensitive}
+	KInstruction.KBreak = <break<KEOI>> {case-insensitive}
+	KInstruction.KPreserve = <preserve<KEOI>> {case-insensitive}
+	
+	KParameterPreset.KDefaultPreset = < <TOIS> <KExpr> >
+	KParameterDefinition.KDefaultDefinition = <<ID> <KParameterPreset?>> 
+	KInstruction.KDeclareParameter = <<DECLARE?> parameter <{KParameterDefinition ","}*><KEOI>> {case-insensitive}
+	
+	KInstruction.KDeclareFunction = <<DECLARE?> <SCOPE?> function <ID> <KBlock>> {case-insensitive}
+	KInstruction.KDeclareLock = <<DECLARE?><SCOPE?>lock <ID> to <KExpr><KEOI>> {case-insensitive}
+	KInstruction.KDeclareIdentifierScoped = <<DECLARE?> <SCOPE> <ID> <KParameterPreset><KEOI>>
+	KInstruction.KDeclareIdentifierUnscoped = <<DECLARE> <ID> <KParameterPreset><KEOI>>
+	
+	KInstruction.KReturn = <return <KExpr?><KEOI>> {case-insensitive}
+	KInstruction.KSwitch = <switch to <KExpr><KEOI>> {case-insensitive}
+	KInstruction.KCopyFrom = <copy <KExpr> from <KExpr><KEOI>> {case-insensitive}
+	KInstruction.KCopyTo = <copy <KExpr> to <KExpr><KEOI>> {case-insensitive}
+	
+	
+	
+lexical syntax // reserved words
+	ID		= Keyword {reject}
+	Keyword = "true"
+	Keyword = "false"

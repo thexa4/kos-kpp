@@ -1,0 +1,78 @@
+module KPP2
+
+imports
+  
+  Common
+  KOS
+
+context-free start-symbols
+  
+  Start
+
+context-free syntax
+  
+  Start.LegacyFile = <<{KInstruction "\n"}*>>
+  Start.ModernFile = <<File>>
+  
+  File.File = [
+  	[{Using ";\n"}*]
+  	
+  	[{Class "\n\n"}*]
+  ]
+  
+  Using.Using = [using [STRING]]
+  
+  Class.Class = [
+  	class [ID] {
+  		[{ClassDefinition "\n"}*]
+  	}
+  ]
+  
+  ClassDefinition.Field = [[Type] [ID] = [Expr];]
+  ClassDefinition.Method = [
+  	[Type] [ID]( [{Parameter ", "}*] ) {
+  		[{Instruction "\n"}*]
+  	}
+  ]
+  
+  Parameter.Parameter = [[Type] [ID]]
+  Parameter.ParameterDefault = [[Type] [ID] = [Expr]]
+  
+  Type.NumberT = [number]
+  Type.StringT = [string]
+  Type.StructureT = [struct]
+  Type.UnitT = [unit]
+  Type.DynamicT = [dynamic]
+  
+  Type.Option = [[Type]?]
+  Type.CustomT = [[ID]] {avoid}
+  //Type.Generic = [[ID]< [{Type ", "}+] >]
+  
+context-free syntax
+  Instruction.LegacyBlock = [
+  	extern "KOS" {
+  		[{KInstruction "\n"}*]
+  	}
+  ]
+  Instruction.Declaration = [[Type] [ID];]
+  Instruction.DeclarationAssigned = [[Type] [ID] = [Expr];]
+  Instruction.Assignment = [[Expr] = [Expr];]
+  Instruction.Call = [[Expr]( [{Expr ", "}*] );]
+  
+context-free syntax
+  Expr = [([Expr])] {bracket}
+  Expr.Legacy = [_legacy( [KExpr] )]
+  Expr.Cast = [([Type])[Expr]]
+  Expr.String = [[STRING]]
+  Expr.Number = [[NUMBER]]
+  
+  Expr.Identifier = [[ID]]
+  
+  Expr.Div = [[Expr] / [Expr]] {left}
+  
+context-free priorities
+  {
+    Expr.Cast
+  } > {
+    left: Expr.Div
+  }

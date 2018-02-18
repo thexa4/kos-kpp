@@ -1,0 +1,63 @@
+module test
+
+language KPP2
+
+test anonymous_function [[
+  set tVal to {
+    declare global var to a.
+  }.
+]] parse succeeds
+
+test blocks [[
+until altitude > 10000
+{
+  if verticalspeed > 210
+  {
+    set tVal to ((-0.02) + tVal).
+  }.
+}
+]] parse succeeds
+
+
+test loops [[
+set tVal to 1.
+
+lock throttle to tVal.
+lock steering to up + R(0,0,180).
+stage.
+print "Launch!".
+
+until altitude > 10000
+{
+  if verticalspeed > 210
+  {
+    set tVal to ((-0.02) + tVal).
+  }
+}
+
+lock steering to up + R(0,0,180) + R(0,-60,0).
+print "Beginning gravity turn.".
+
+wait 5.
+
+until throttle = 1
+{
+  set tVal to tVal + 0.02.
+  if tVal > 1 { set tVal to 1. }.
+}
+]] parse succeeds
+
+test class [[
+class Playbook2 {
+	unit foo(string a) {
+		number a;
+		a = (number)((number)_legacy(10)) / 10 / (number)_legacy(41 * 2);
+		
+		dynamic b = a;
+		
+		extern "KOS" {
+			set a to "b".
+		}
+	}
+}
+]] parse succeeds

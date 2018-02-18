@@ -1,0 +1,92 @@
+module static-semantics
+
+imports
+
+  signatures/-
+
+signature
+
+  sorts
+    Void
+
+  namespaces
+    Module
+    Class
+    Method
+    Variable
+    Property
+    Block
+  
+  name resolution
+    labels P
+  
+  constructors
+    NumberT :  Type
+    StringT : Type
+    UnitT : Type
+    Dynamic : Type
+
+  constraint generator
+  
+    [[ Expr ^ (scope) : Type ]]
+
+rules
+
+  init ^ (topScope) :=
+    new topScope.
+
+  [[ ModernFile(File(usings, classes)) ^ (topScope) ]] := 
+    Map1 [[ classes ^ (topScope) ]].
+    
+  [[ LegacyFile(_) ^ (topScope) ]] := false | note "No support for legacy files".
+
+  [[ Class(classname, definitions) ^ (topScope) ]] :=
+    distinct/name D(topScope)/Class | note "Duplicate class definition" @NAMES,
+  	Class { classname } <- topScope,
+    new classScope,
+    Map1 [[ definitions ^ (classScope) ]].
+  
+  [[ Method(methodType, methodName, _, methodInstructions) ^ (classScope) ]] :=
+    distinct/name D(classScope)/Method | note "Duplicate identifier" @NAMES,
+    Method { methodName } <- classScope,
+    Method { methodName } : methodType,
+    Map1 [[ methodInstructions ^ (methodScope) ]],
+    new methodScope.
+    
+  [[ Field(fieldType, fieldName, fieldExpr) ^ (classScope) ]] :=
+    distinct/name D(classScope)/Field | note "Duplicate identifier" @NAMES,
+    Field { fieldName } <- classScope,
+    fieldScope -P-> classScope,
+    Field { fieldName} : fieldType,
+    [[ fieldExpr ^ (classScope) : fieldType ]],
+    new fieldScope.
+  
+  [[ Declaration(varType, varName) ^ (methodScope) ]] :=
+    distinct/name D(methodScope)/Variable | note "Duplicate identifier" @NAMES,
+    Variable { varName } <- methodScope,
+    Variable { varName } : varType,
+    new varScope.
+  
+  [[ Assignment(Identifier(varName), valueExpr) ^ (methodScope) ]] :=
+    Variable { varName } -> methodScope,
+    Variable { varName } |-> declaration,
+    declaration : declarationType,
+    declarationType == varType,
+    [[ valueExpr ^ (methodScope) : varType ]].
+  
+  [[ DeclarationAssigned(varType, varName, valueExpr) ^ (methodScope) ]] :=
+    distinct/name D(methodScope)/Variable | note "Duplicate identifier" @NAMES,
+    Variable { varName } <- methodScope,
+    Variable { varName } : varType,
+    [[ valueExpr ^ (methodScope) : varType ]],
+    new varScope.
+  
+  [[ Using(_) ^ (topScope) ]] := false.
+  
+  [[ Number(_) ^ (_) : NumberT() ]].
+  [[ String(_) ^ (_) : StringT() ]].
+  [[ LegacyBlock(_) ^ (_) ]].
+  
+rules // instructions
+
+  

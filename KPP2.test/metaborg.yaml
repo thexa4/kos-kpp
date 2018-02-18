@@ -1,0 +1,9 @@
+---
+id: nl.maxmaton:KPP2.test:0.1.0-SNAPSHOT
+name: KPP2
+dependencies:
+  compile:
+  - nl.maxmaton:KPP2:0.1.0-SNAPSHOT
+  - org.metaborg:org.metaborg.meta.lang.spt:${metaborgVersion}
+build:
+  useBuildSystemSpec: true

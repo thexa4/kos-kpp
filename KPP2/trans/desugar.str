@@ -1,0 +1,35 @@
+module desugar
+
+imports
+  
+  kpp2
+  nabl2shared
+  nabl2runtime
+  
+  static-semantics
+
+  pp
+
+signature
+  constructors
+    //Seq : Instruction * Instruction -> Instruction
+    DesugaredClass : Identifier * [Field(a, b, c)] * [Method(a, b, c, d)] -> Void
+
+rules // Desugar
+
+  rule-desugar: (_, _, ast, path, project-path) -> (filename, result)
+    with filename := <guarantee-extension(|"desugared.aterm")> path
+       ; result   := <strat-desugar> ast
+      
+rules
+
+  field: Field(type, name, expr) -> Field(type, name, expr)
+  method: Method(type, name, params, expr) -> Method(type, name, [Parameter(DynamicT(), "this") | params], expr)
+
+  desugar: DeclarationAssigned(type, name, value) -> [Declaration(type, name), Assignment(Identifier(name), value)]
+  desugar: Method(type, name, parameters, instructions) -> Method(type, name, parameters, <flatten-list> instructions)
+  desugar: Class(name, entities) -> DesugaredClass(name, <filter(field)> entities, <filter(method)> entities)
+strategies
+  strat-desugar = bottomup(try(desugar)); debug
+  //desugar-kpp(term) = term
+

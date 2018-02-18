@@ -1,0 +1,22 @@
+using "a"
+
+class test {
+  number a = 2;
+
+  number foo(number a) {
+    number a = 3;
+    a = 3 / 1;
+    
+    extern "KOS" {
+    		parameter foo.
+    		set foo to a().
+    		print "Hello World".
+    }
+  }
+}
+
+class test2 {
+  number foo() {
+  	
+  }
+}
