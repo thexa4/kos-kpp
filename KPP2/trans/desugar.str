@@ -9,11 +9,12 @@ imports
   static-semantics
 
   pp
+  
+  signatures/-
 
 signature
   constructors
-    //Seq : Instruction * Instruction -> Instruction
-    DesugaredClass : Identifier * [Field(a, b, c)] * [Method(a, b, c, d)] -> Void
+    DesugaredClass : Identifier * List(Field) * List(Method) -> Void
 
 rules // Desugar
 

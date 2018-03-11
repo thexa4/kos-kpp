@@ -19,5 +19,4 @@ declare global class_Test  to lexicon( "new", {
   }, "bar", {
      parameter this .
     declare d  to 0 .
-    set d to 2.
   } ) .

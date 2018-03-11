@@ -63,6 +63,8 @@ context-free syntax
   Instruction.DeclarationAssigned = [[Type] [ID] = [Expr];]
   Instruction.Assignment = [[Expr] = [Expr];]
   Instruction.Call = [[Expr]( [{Expr ", "}*] );]
+  Instruction.YieldExit = [yield [Expr];]
+  Instruction.YieldNext = [yield [Expr] -> [ID];]
   
 context-free syntax
   Expr = [([Expr])] {bracket}
@@ -76,6 +78,18 @@ context-free syntax
   Expr.Identifier = [[ID]]
   
   Expr.Div = [[Expr] / [Expr]] {left}
+  
+  Expr.StateMachine = [state<[Type], [Type]> {
+  	[{State "\n"}*]
+  }]
+  
+  State.FieldDeclaration = [[Type] [ID] = [Expr];]
+  State.NormalStateDefinition = [[ID]([ID]) {
+  	[{Instruction "\n"}*]
+  }]
+  State.FinalStateDefinition = [final [ID]([ID]) {
+  	[{Instruction "\n"}*]
+  }]
   
 context-free priorities
   {

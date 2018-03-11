@@ -12,8 +12,14 @@ class Test2 {
 class Test {
 
   number bar() {
-    number d = 2;
-    d = "asdf";
+    number d = state<number, number> {
+    		number s = 3;
+    		
+    		init(num) {
+    			yield (num / 1) -> init;
+    		}
+    };
+    //d = "asdf";
   }
   //number bar(number a) {
     //number d = 2;

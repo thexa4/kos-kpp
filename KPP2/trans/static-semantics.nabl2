@@ -83,9 +83,10 @@ rules
     fieldScope ---> classScope.
   
   [[ Declaration(varType, varName) ^ (methodScope) ]] :=
-    distinct/name D(methodScope)/Variable | note "Duplicate identifier" @NAMES,
+    distinct/name D(methodScope)/Variable | note "Duplicate identifier - foo42" @NAMES,
     Identifier { varName } <- methodScope,
     Identifier { varName } : varType,
+    Identifier { varName } genOf varType,
     new varScope.
   
   [[ Assignment(victim, valueExpr) ^ (methodScope) ]] :=
