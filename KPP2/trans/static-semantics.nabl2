@@ -3,6 +3,7 @@ module static-semantics
 imports
 
   signatures/-
+  
 
 signature
 
@@ -22,13 +23,14 @@ signature
     labels P
   
   constructors
-    NumberT :  Type
-    StringT : Type
-    ClassT : Type
-    TypeT : Class -> Type
+    Number :  Type
+    String : Type
+    Class : Type
+    Object : Class -> Type
     Dynamic : Type
-    FuncT : list(Type) * Type -> Type
+    Func : list(Type) * Type -> Type
     Coerce : Type -> Type
+    Ref : Type * Declaration -> Type
 
   constraint generator
   
@@ -37,6 +39,7 @@ signature
 rules
 
   init ^ (topScope) :=
+    Number() <! Dynamic(),
     new topScope.
 
   [[ ModernFile(File(usings, classes)) ^ (topScope) ]] := 
@@ -49,20 +52,28 @@ rules
   	Identifier { classname } <- topScope,
   	new classScope,
   	Identifier { classname } ===> classScope,
-  	Identifier { classname } : TypeT(Identifier { classname }),
+  	Identifier { classname } : Type(Identifier { classname }),
   	Identifier { "alloc" } <- classScope,
-  	Identifier { "alloc" } : FuncT(CustomT(classname), []),
+  	Identifier { "alloc" } : Func(Object(classname), []),
+  	Func(Object(classname), []) <! Dynamic(),
     classScope ---> topScope,
-    Map1 [[ definitions ^ (classScope) ]].
+    new instanceScope,
+    instanceScope ---> classScope,
+    Identifier { "this" } <- instanceScope,
+    Identifier { "this" } : Object(classname),
+    Object(classname) <! Dynamic(),
+    Identifier { "this" } ===> instanceScope,
+    Map2 [[ definitions ^ (instanceScope, classScope) ]].
   
-  [[ Method(methodType, methodName, parameters, methodInstructions) ^ (classScope) ]] :=
-    distinct/name D(classScope)/Identifier | note "Duplicate identifier" @NAMES,
-    Identifier { methodName } <- classScope,
-    Identifier { methodName } : FuncT(paramTypes, methodType),
+  [[ Method(methodType, methodName, parameters, methodInstructions) ^ (instanceScope, classScope) ]] :=
+    distinct/name D(instanceScope)/Identifier | note "Duplicate identifier" @NAMES,
+    Identifier { methodName } <- instanceScope,
+    Identifier { methodName } : Func(paramTypes, methodType),
+    Func(paramTypes, methodType) <! Dynamic(),
     StripParameters[[ parameters ^ () : paramTypes ]],
-    Map1 [[ methodInstructions ^ (methodScope) ]],
+    Map1 [[ methodInstructions ^ (instanceScope) ]],
     new methodScope,
-    methodScope ---> classScope.
+    methodScope ---> instanceScope.
   
   StripParameters [[ [] ^ () : [] ]].
   StripParameters [[ [elem | rest] ^ () : [eType | restTypes] ]] :=
@@ -71,73 +82,70 @@ rules
 
   StripParameters [[ Parameter(type, _) ^ () : type ]].
     
-  [[ Field(fieldType, fieldName, fieldExpr) ^ (classScope) ]] :=
+  [[ Field(typeLiteral, fieldName, fieldExpr) ^ (instanceScope, classScope) ]] :=
     distinct/name D(classScope)/Identifier | note "Duplicate identifier" @NAMES,
-    Identifier { fieldName } <- classScope,
-    fieldScope -P-> classScope,
-    Identifier { fieldName } : fieldType,
+    Identifier { fieldName } <- instanceScope,
+    fieldScope -P-> instanceScope,
+    Identifier { fieldName } : Ref(fieldType),
+    Ref(fieldType) <! fieldType,
     [[ fieldExpr ^ (classScope) : exprType ]],
     //[[ exprType ^ () : fieldtype ]],
-    exprType == fieldType,
+    exprType <? fieldType,
+    //coerce == Coerce(exprType),
+    //[[ coerce ^ () : Coerce(fieldType) ]],
     new fieldScope,
-    fieldScope ---> classScope.
+    typeLookup [[ typeLiteral ^ () : fieldType ]],
+    fieldScope ---> instanceScope.
   
-  [[ Declaration(varType, varName) ^ (methodScope) ]] :=
+  [[ Declaration(typeLiteral, varName) ^ (methodScope) ]] :=
     distinct/name D(methodScope)/Variable | note "Duplicate identifier - foo42" @NAMES,
     Identifier { varName } <- methodScope,
-    Identifier { varName } : varType,
+    Identifier { varName } : Ref(varType),
+    Ref(varType) <! varType,
     Identifier { varName } genOf varType,
+    typeLookup [[ typeLiteral ^ () : varType ]],
     new varScope.
   
   [[ Assignment(victim, valueExpr) ^ (methodScope) ]] :=
-    [[ victim ^ (methodScope) : declaration ]],
+    [[ victim ^ (methodScope) : victimType ]],
+    victimType == Ref(refType) | note "Not a writable reference",
     [[ valueExpr ^ (methodScope) : valueType ]],
-    declaration : valueType.
-    [[ Coerce(valueType) ^ () : Coerce(declarationType) ]].
+    valueType <? refType.
   
-  [[ DeclarationAssigned(varType, varName, valueExpr) ^ (methodScope) ]] :=
+  [[ DeclarationAssigned(typeLiteral, varName, valueExpr) ^ (methodScope) ]] :=
     distinct/name D(methodScope)/Variable | note "Duplicate identifier" @NAMES,
     Identifier { varName } <- methodScope,
-    Identifier { varName } : varType,
+    Identifier { varName } : Ref(varType),
     [[ valueExpr ^ (methodScope) : valType ]],
-    coerce == Coerce(valType),
-    [[ coerce ^ () : Coerce(varType) ]],
+    typeLookup [[ typeLiteral ^ () : varType ]],
+    valType <? varType,
     new varScope.
-    
-  [[ Identifier(varName) ^ (methodScope) : declaration ]] :=
-  	Identifier { varName } -> methodScope,
-    Identifier { varName } |-> declaration.
   
-  [[ Accessor(victim, _, propertyName) ^ (methodScope) : fieldType ]] :=
+  [[ Identifier(varName) ^ (scope) : t ]] :=
+  	Identifier { varName } -> scope,
+  	Identifier { varName } |-> declaration,
+  	declaration : t.
+  
+  [[ Accessor(victim, _, propertyName) ^ (methodScope) : declaration ]] :=
     [[ victim ^ (methodScope) : reference ]],
     new accessorScope,
     reference ?===> classScope,
     accessorScope ---> classScope,
     Identifier { propertyName } -> accessorScope,
-    Identifier { propertyName } |-> declaration,
-    declaration : fieldType.
+    Identifier { propertyName } |-> declaration.
     
+  [[ ExprInstruction(a) ^ (scope) ]] :=
+  	[[ a ^ (scope) : _ ]].
+   
   [[ Using(_) ^ (topScope) ]] := false.
   
-  
-  [[ Number(_) ^ (_) : NumberT() ]].
-  [[ String(_) ^ (_) : StringT() ]].
   [[ LegacyBlock(_) ^ (_) ]].
   
+  [[ NumberLiteral(_) ^ (_) : Number() ]].
+  [[ StringLiteral(_) ^ (_) : String() ]].
   
-  [[ Coerce(_) ^ () : Coerce(DynamicT()) ]].
-  /*
-  coerce [[ NumberT() ^ () : DynamicT() ]].
-  coerce [[ StringT() ^ () : DynamicT() ]].
-  coerce [[ TypeT() ^ () : DynamicT() ]].
-  coerce [[ CustomT(_) ^ () : DynamicT() ]].
-  coerce [[ FuncT(_, _) ^ () : DynamicT() ]].
-  coerce [[ NumberT() ^ () : NumberT() ]].
-  coerce [[ StringT() ^ () : StringT() ]].
-  coerce [[ TypeT() ^ () : TypeT() ]].
-  coerce [[ CustomT(c) ^ () : CustomT(c) ]].
-  coerce [[ FuncT(a, b) ^ () : FuncT(a,b) ]].*/
-  
+  typeLookup [[DynamicT() ^ () : Dynamic() ]].
+  typeLookup [[NumberT() ^ () : Number() ]].
 rules // instructions
 
   

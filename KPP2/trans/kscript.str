@@ -16,7 +16,7 @@ rules
   strip-types: Cast(_, a) -> a
   strip-legacy: Legacy(a) -> a
   
-  legacy: Number(a)					-> Legacy(KNumber(a))
+  legacy: NumberLiteral(a)					-> Legacy(KNumber(a))
   legacy: Div(Legacy(a), Legacy(b))	-> Legacy(KDiv(a, b))
   
   legacy: Declaration(_, name) 			-> LegacyBlock([KDeclareIdentifierUnscoped("declare", name, KDefaultPreset("to", KNumber("0")), ".")])

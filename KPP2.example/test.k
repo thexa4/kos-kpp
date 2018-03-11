@@ -8,6 +8,7 @@ declare global class_Test2  to lexicon( "new", {
     return result.
   }, "bar", {
      parameter this .
+    declare b  to 0 .
   } ) .
 declare global class_Test  to lexicon( "new", {
     set prototype to class_Test.
@@ -18,5 +19,4 @@ declare global class_Test  to lexicon( "new", {
     return result.
   }, "bar", {
      parameter this .
-    declare d  to 0 .
   } ) .

@@ -49,7 +49,7 @@ context-free syntax
   Type.TypeT = [type]
   Type.FuncT = [({Type ", "}) -> {Type}]
   
-  Type.Option = [[Type]?]
+  Type.OptionT = [[Type]?]
   Type.CustomT = [[ID]] {avoid}
   //Type.Generic = [[ID]< [{Type ", "}+] >]
   
@@ -65,13 +65,14 @@ context-free syntax
   Instruction.Call = [[Expr]( [{Expr ", "}*] );]
   Instruction.YieldExit = [yield [Expr];]
   Instruction.YieldNext = [yield [Expr] -> [ID];]
+  Instruction.ExprInstruction = [[Expr];]
   
 context-free syntax
   Expr = [([Expr])] {bracket}
   Expr.Legacy = [_legacy( [KExpr] )]
   Expr.Cast = [([Type])[Expr]]
-  Expr.String = [[STRING]]
-  Expr.Number = [[NUMBER]]
+  Expr.StringLiteral = [[STRING]]
+  Expr.NumberLiteral = [[NUMBER]]
   
   Expr.Accessor = [[Expr][DOT][ID]] {left}
   
