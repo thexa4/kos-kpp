@@ -54,7 +54,8 @@ context-free syntax
 	KExpr.KCmpMore = [[KExpr] > [KExpr]] {non-assoc}
 	
 	//Functions
-	KExpr.KArrayIndex = <<KExpr>[ <KExpr> ]> {left}
+	KExpr.KArrayIndex = <<KExpr>[ <KArrayIndexExpr> ]> {left}
+	KArrayIndexExpr = <<KExpr>>
 	KExpr.KFunctionCall = <<KExpr>( <{KExpr ", "}*> )> {left}
 	KExpr.KSuffix = <<KExpr>:<ID>> {left}
 	KExpr.KAnonymousFunction = <{
@@ -63,7 +64,7 @@ context-free syntax
 context-free priorities
 
 	{
-		left: KExpr.KSuffix
+		left: KExpr.KSuffix KExpr.KArrayIndex
 	} > {
 		left: KExpr.KFunctionCall
 	} > {
