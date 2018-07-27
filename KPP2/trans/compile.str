@@ -12,9 +12,12 @@ imports
 rules // Desugar
 
   rule-compile: (_, _, ast, path, project-path) -> (filename, result)
+    where
+       analysis := <nabl2-get-resource-analysis> $[[project-path]/[path]];
+       <not(nabl2-analysis-has-errors)> analysis
     with filename := <guarantee-extension(|"k")> path
-       ; result   := <strat-compile> ast
+       ; result   := <strat-compile(|analysis)> ast
    
 strategies
-  strat-compile = strat-desugar; transform-kscript; pp-debug
+  strat-compile(|analysis) = strat-desugar; transform-kscript(|analysis)
 

@@ -1,7 +1,6 @@
 module KOS
 
-imports
-	Common
+imports Common
 
 sorts
 	KExpr
@@ -89,7 +88,9 @@ context-free syntax
 			<{KInstruction "\n"}*>
 		}
 	>
-	KInstruction.KEmpty = <<KEOI>>
+	KInstruction.KExpression = <<KExpr>.> {avoid}
+	
+	KInstruction.KEmpty = <<KEOI>> {avoid}
 	KInstruction.KSet = <set <KExpr> to <KExpr><KEOI>> {case-insensitive}
 	KInstruction.KIf = <if <KExpr> <KInstruction>> {case-insensitive}
 	KInstruction.KIfElse = <if <KExpr> <KInstruction> else <KInstruction>> {case-insensitive}
@@ -135,7 +136,43 @@ context-free syntax
 	KInstruction.KCopyFrom = <copy <KExpr> from <KExpr><KEOI>> {case-insensitive}
 	KInstruction.KCopyTo = <copy <KExpr> to <KExpr><KEOI>> {case-insensitive}
 	
-	
+/*
+context-free priorities
+	{
+		KInstruction.KSet
+		KInstruction.KIf
+		KInstruction.KIfElse
+		KInstruction.KUntil
+		KInstruction.KFromLoop
+		KInstruction.KUnlockIdentifier
+		KInstruction.KUnlockAll
+		KInstruction.KPrint
+		KInstruction.KPrintAt
+		KInstruction.KOn
+		KInstruction.KToggle
+		KInstruction.KWait
+		KInstruction.KWaitUntil
+		KInstruction.KWhen
+		KInstruction.KSetOn
+		KInstruction.KSetOff
+		KInstruction.KStage
+		KInstruction.KClear
+		KInstruction.KSetOff
+		KInstruction.KAddNode
+		KInstruction.KRemoveNode
+		KInstruction.KLog
+		KInstruction.KBreak
+		KInstruction.KPreserve
+		KInstruction.KLog
+		KInstruction.KReturn
+		KInstruction.KSwitch
+		KInstruction.KCopyFrom
+		KInstruction.KCopyTo
+	} > {
+		KInstruction.KExpression
+		KInstruction.KEmpty
+	}*/
+
 	
 lexical syntax // reserved words
 	ID		= Keyword {reject}

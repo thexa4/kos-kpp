@@ -1,22 +1,14 @@
-declare global class_Test2  to lexicon( "new", {
-    set prototype to class_Test2.
-    set result to lexicon(  ).
-    {
-      set result[ "foo" ] to 1.
-      set result[ "bar" ] to prototype[ "bar" ]:bind( result ).
-    }
-    return result.
-  }, "bar", {
-     parameter this .
-    declare b  to 0 .
-  } ) .
-declare global class_Test  to lexicon( "new", {
-    set prototype to class_Test.
-    set result to lexicon(  ).
-    {
-      set result[ "bar" ] to prototype[ "bar" ]:bind( result ).
-    }
-    return result.
-  }, "bar", {
-     parameter this .
-  } ) .
+LegacyFile(
+  [ DesugaredClass(
+      "Test2"
+    , [Field(NumberT(), "counter", Legacy(KNumber("0")))]
+    , [ Method(
+          UnitT()
+        , "main"
+        , [KDeclareParameter(None(), [KDefaultDefinition("this", None())], ".")]
+        , [LegacyBlock([KSet(KIdentifier("counter"), KNumber("9"), ".")])]
+        )
+      ]
+    )
+  ]
+)

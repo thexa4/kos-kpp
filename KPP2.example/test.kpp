@@ -1,34 +1,9 @@
-using "a"
-
 class Test2 {
-	dynamic foo = 1;
-
-	string bar()
-	{
-		foo = this;
-		//number i = foo;
-		number b = foo;
-		//foo = b;
-		//foo = 3;
-	}
-}
-
-class Test {
-
-  number bar() {
-    /*number d = state<number, number> {
-    		number s = 3;
-    		
-    		init(num) {
-    			yield (num / 1) -> init;
-    		}
-    };*/
-    //d = "asdf";
-  }
-  //number bar(number a) {
-    //number d = 2;
-    //d = Test2.alloc;
     
-    //dynamic c = 1;
-  //}
+    number counter = 0;
+
+    unit main() {
+    
+        counter = 9;
+    }
 }

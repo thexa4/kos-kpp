@@ -1,9 +1,7 @@
 module KPP2
 
-imports
-  
-  Common
-  KOS
+imports Common
+imports KOS
 
 lexical syntax
   DOT = [\.]
@@ -62,7 +60,7 @@ context-free syntax
   Instruction.Declaration = [[Type] [ID];]
   Instruction.DeclarationAssigned = [[Type] [ID] = [Expr];]
   Instruction.Assignment = [[Expr] = [Expr];]
-  Instruction.Call = [[Expr]( [{Expr ", "}*] );]
+//  Instruction.Call = [[Expr]( [{Expr ", "}*] );]
   Instruction.YieldExit = [yield [Expr];]
   Instruction.YieldNext = [yield [Expr] -> [ID];]
   Instruction.ExprInstruction = [[Expr];]
@@ -79,6 +77,9 @@ context-free syntax
   Expr.Identifier = [[ID]]
   
   Expr.Div = [[Expr] / [Expr]] {left}
+  Expr.Add = [[Expr] + [Expr]] {left}
+  
+  Expr.FunctionCall = [[Expr]( [{Expr ", "}*] )] {left}
   
   Expr.StateMachine = [state<[Type], [Type]> {
   	[{State "\n"}*]
@@ -97,4 +98,6 @@ context-free priorities
     Expr.Cast
   } > {
     left: Expr.Div
+  } > {
+    left: Expr.Add
   }

@@ -4,53 +4,67 @@ imports
   signatures/Common-sig
   signatures/KOS-sig
   signatures/KPP2-sig
+  nabl2/api
   
   desugar
   pp
 
 strategies
-  transform-kscript = innermost(strip-types); innermost(legacy)
+  transform-kscript(|analysis) = innermost(legacy(|analysis))
   
 rules
   
-  strip-types: Cast(_, a) -> a
+  //expand-accessors(|analysis): Accessor(a, b, c) -> a
+  //	with
+  //	  params := <nabl2-get-ast-params
+  
+  strip-types(): Accessor(any, _, _) -> KIdentifier(any)
+    //with
+    //  analysis := <nabl2-get-ast-analysis; debug> any
+    //  ; termParams := <nabl2-get-ast-type(|analysis)>
+  
+  //strip-types: Cast(_, a) -> a
   strip-legacy: Legacy(a) -> a
   
-  legacy: NumberLiteral(a)					-> Legacy(KNumber(a))
-  legacy: Div(Legacy(a), Legacy(b))	-> Legacy(KDiv(a, b))
+  legacy(|analysis): NumberLiteral(a)					-> Legacy(KNumber(a))
+  legacy(|analysis): Div(Legacy(a), Legacy(b))	-> Legacy(KDiv(a, b))
   
-  legacy: Declaration(_, name) 			-> LegacyBlock([KDeclareIdentifierUnscoped("declare", name, KDefaultPreset("to", KNumber("0")), ".")])
-  legacy: Assignment(name, Legacy(v)) 	-> LegacyBlock([KSet(name, v, ".")])
-  legacy: Identifier(name) -> KIdentifier(name)
-  legacy: Assignment(_, _) -> LegacyBlock([])
+  legacy(|analysis): Declaration(_, name) 			-> LegacyBlock([KDeclareIdentifierUnscoped("declare", name, KDefaultPreset("to", KNumber("0")), ".")])
+  legacy(|analysis): Assignment(victim, Legacy(value)) 	-> LegacyBlock([KSet(victim, value, ".")])
+  //  with
+  //    termParams := <nabl2-get-ast-type(|analysis)> victim
   
-  legacy: DesugaredClass(name, fields, methods) -> KDeclareIdentifierScoped("declare", "global", <conc-strings>("class_", name), KDefaultPreset("to",
+  legacy(|analysis): input@Identifier(content) -> KIdentifier(content)
+    with
+      termType := <nabl2-get-type(|analysis)> input
+  
+  legacy(|analysis): ExprInstruction(Legacy(expr)) -> LegacyBlock(KExpression(expr))
+  legacy(|analysis): Add(Legacy(a), Legacy(b)) -> Legacy(KAdd(a, b))
+  
+  //legacy(|analysis): Identifier(name) -> Legacy(KIdentifier(analysis)) // Todo, use type lookup
+  //  with
+  //    termParams := <nabl2-get-ast-type(|analysis)> Identifier(name)
+  
+  legacy(|analysis): DesugaredClass(name, fields, methods) -> KDeclareIdentifierScoped("declare", "global", <conc-strings>("class_", name), KDefaultPreset("to",
       KFunctionCall(KIdentifier("lexicon"), <flatten-list> ["\"new\"", KAnonymousFunction([
-        KSet(KIdentifier("prototype"), KIdentifier(<conc-strings>("class_", name)), "."),
         KSet(KIdentifier("result"), KFunctionCall(KIdentifier("lexicon"), []), "."),
       	KBlock(<flatten-list> [
-      		<map(initialize-class)> fields,
-      		<map(initialize-class)> methods
+      		<map(initialize-class(|analysis))> fields,
+      		KSet(KArrayIndex(KIdentifier("result"), KString("\"prototype\"")), KIdentifier(<conc-strings>("class_", name)), ".")
       	]),
       	KReturn(Some(KIdentifier("result")), ".")
       ]), <map(define-methods)> methods])
     ), ".")
     
-  initialize-class: Field(_, name, value) -> KSet(KArrayIndex(KIdentifier("result"), KString(<conc-strings>("\"", name, "\""))), <strip-legacy; innermost(legacy)> value, ".")
-  initialize-class: Method(_, name, _, _) -> KSet(KArrayIndex(KIdentifier("result"), KString(<conc-strings>("\"", name, "\""))), KFunctionCall(KSuffix(KArrayIndex(KIdentifier("prototype"), KString(<conc-strings>("\"", name, "\""))), "bind"), [KIdentifier("result")]), ".")
+  initialize-class(|analysis): Field(_, name, value) -> KSet(KArrayIndex(KIdentifier("result"), KString(<conc-strings>("\"", name, "\""))), <strip-legacy; innermost(legacy(|analysis))> value, ".")
   
   define-methods: Method(_, name, params, instructions) -> [KString(<conc-strings>("\"", name, "\"")), KAnonymousFunction(<flatten-list>[params, [<flatten-legacy-blocks>instructions]])]
     where not( <?[LegacyBlock(_)]> instructions)
   
- // legacy: Method(_, name, params, instructions) -> 
-  legacy: Parameter(_, name) -> KDeclareParameter(None(), [KDefaultDefinition(name, None())], ".")
- // legacy: Field(_, name, Legacy(value)) -> [name, value]
-  
-  //create-constructor(|classname): [] -> []
-  //create-constructor(|classname): [name, KAnonymousFunction(inst) | rest] -> [ KSet(name, KFunctionCall(KSuffix(KArrayIndex(KIdentifier(classname), KString(name)), "bind"), [KIdentifier("result")]), ".")]
-  //create-constructor(|classname): [name, value | rest] -> [ KSet(name
+  legacy(|analysis): Parameter(_, name) -> KDeclareParameter(None(), [KDefaultDefinition(name, None())], ".")
   
   flatten-legacy-blocks: [] -> []
   flatten-legacy-blocks: [LegacyBlock(head)|tail] -> [head|<flatten-legacy-blocks>tail]
+  flatten-legacy-blocks: [head|tail] -> [head|<flatten-legacy-blocks>tail]
   	
-  legacy: ModernFile(File(usings, legacyInstructions)) -> LegacyFile(<flatten-list>legacyInstructions)
+  legacy(|analysis): ModernFile(File(usings, legacyInstructions)) -> LegacyFile(<flatten-list>legacyInstructions)
