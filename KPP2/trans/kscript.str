@@ -5,6 +5,7 @@ imports
   signatures/KOS-sig
   signatures/KPP2-sig
   nabl2/api
+  nabl2/-
   
   desugar
   pp
@@ -12,16 +13,20 @@ imports
 strategies
   transform-kscript(|analysis) = innermost(legacy(|analysis))
   
+  fix-quotes = innermost(add-quotes)
+  
 rules
   
   //expand-accessors(|analysis): Accessor(a, b, c) -> a
   //	with
   //	  params := <nabl2-get-ast-params
   
-  strip-types(): Accessor(any, _, _) -> KIdentifier(any)
+  
     //with
     //  analysis := <nabl2-get-ast-analysis; debug> any
     //  ; termParams := <nabl2-get-ast-type(|analysis)>
+  
+  add-quotes: AddQuotes(inner) -> <conc-strings>("\"", inner, "\"")
   
   //strip-types: Cast(_, a) -> a
   strip-legacy: Legacy(a) -> a
@@ -30,13 +35,19 @@ rules
   legacy(|analysis): Div(Legacy(a), Legacy(b))	-> Legacy(KDiv(a, b))
   
   legacy(|analysis): Declaration(_, name) 			-> LegacyBlock([KDeclareIdentifierUnscoped("declare", name, KDefaultPreset("to", KNumber("0")), ".")])
-  legacy(|analysis): Assignment(victim, Legacy(value)) 	-> LegacyBlock([KSet(victim, value, ".")])
+  legacy(|analysis): Assignment(victim, Legacy(value)) 	-> LegacyBlock([KSet(<location-decode(|analysis)>victim, value, ".")])
   //  with
   //    termParams := <nabl2-get-ast-type(|analysis)> victim
   
-  legacy(|analysis): input@Identifier(content) -> KIdentifier(content)
+  location-decode(|analysis): input@Identifier(content) -> fixed
     with
-      termType := <nabl2-get-type(|analysis)> input
+      Ref(_, declaration) := <nabl2-get-ast-type(|analysis)> input
+      ; location := <nabl2-get-property(|analysis, "location")> declaration
+      ; fixed := <fix-quotes>(location)
+  location-decode(|analysis): rest -> rest
+  
+  //legacy(|analysis): input@Accessor(any, _, _) -> KIdentifier(any)
+  
   
   legacy(|analysis): ExprInstruction(Legacy(expr)) -> LegacyBlock(KExpression(expr))
   legacy(|analysis): Add(Legacy(a), Legacy(b)) -> Legacy(KAdd(a, b))

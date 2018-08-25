@@ -20,19 +20,26 @@ signature
   
   constructors
     Number : Type
+    AddQuotes : String -> Term
     String : Type
     Class : Type * scope -> Type
     Object : Class * scope -> Type
     Dynamic : Type
     Func : list(Type) * Type -> Type
     Coerce : Type -> Type
-    Ref : Type -> Type
+    Ref : Type * Term -> Type
     Unit : Type
     Instruction : Type -> Type
 
   constraint generator
   
     [[ Expr ^ (scope) : Type ]]
+
+  functions
+  
+    getScope : (Term * scope) -> scope {
+    	  Object(_, scope) -> scope
+    }
 
 rules
 
@@ -53,38 +60,40 @@ rules
   [[ LegacyFile(_) ^ (topScope) ]] := false | note "No support for legacy files".
 
   [[ Class(className, definitions) ^ (topScope) ]] :=
-    distinct/name D(topScope)/Identifier | note $[Duplicate identifier [NAME]] @NAMES,
+    distinct/name D(topScope)/Identifier | note $[Duplicate identifier 1 [NAME]] @NAMES,
   	new classScope,
   	classScope ---> topScope,
-    new instanceScope,
-    instanceScope ---> classScope,
+    new instanceScope1,
+    instanceScope1 ---> classScope,
   	
   	Identifier { className } <- topScope,
   	Identifier { className } : Class(className, classScope),
   	Identifier { "new" } <- classScope,
-  	Identifier { "new" } : Func(Object(className, instanceScope), []),
+  	Identifier { "new" } : Func(Object(className, instanceScope1), []),
   	Type { CustomT(className) } <- topScope,
-  	Type { CustomT(className) } : Object(className, instanceScope),
+  	Type { CustomT(className) } : Object(className, instanceScope1),
   	
-  	Object(className, instanceScope) <! Dynamic(),
-  	Func(Object(className, instanceScope), []) <! Dynamic(),
+  	Object(className, instanceScope1) <! Dynamic(),
+  	Func(Object(className, instanceScope1), []) <! Dynamic(),
   	
-    Map2 [[ definitions ^ (Object(className, instanceScope), classScope) ]].
+    Map2 [[ definitions ^ (Object(className, instanceScope1), classScope) ]].
   
   [[ Method(methodType, methodName, parameters, methodInstructions) ^ (objectType, classScope) ]] :=
-    distinct/name D(instanceScope)/Identifier | note $[Duplicate identifier [NAME]] @NAMES,
-    objectType == Object(_, instanceScope),
+    distinct/name D(instanceScope2)/Identifier | note $[Duplicate identifier 2 [NAME]] @NAMES,
+    objectType == Object(_, instanceScope2),
+    //objectType == instanceScope2,
     
-    Identifier { methodName } <- instanceScope,
+    Identifier { methodName } <- instanceScope2,
     Identifier { methodName } : Func(paramTypes, methodType),
-    Identifier { "this" } <- instanceScope,
-    Identifier { "this" } : objectType,
     
     StripParameters[[ parameters ^ () : paramTypes ]],
     Func(paramTypes, methodType) <! Dynamic(),
 
     new methodScope,
-    methodScope ---> instanceScope,
+    methodScope ---> classScope,
+    
+    Identifier { "this" } <- methodScope,
+    Identifier { "this" } : objectType,
 
     Map1 [[ methodInstructions ^ (methodScope) ]].
   
@@ -98,8 +107,8 @@ rules
   StripParameters [[ Parameter(type, _) ^ () : type ]].
     
   [[ Field(typeLiteral, fieldName, fieldExpr) ^ (objectType, classScope) ]] :=
-    distinct/name D(instanceScope)/Identifier | note $[Duplicate identifier [NAME]] @NAMES,
-    objectType == Object(_, instanceScope),
+    distinct/name D(instanceScope3)/Identifier | note $[Duplicate identifier 3 [NAME]] @NAMES,
+    objectType == Object(_, instanceScope3),
     
     new fieldScope, fieldScope ---> classScope,
     [[ fieldExpr ^ (fieldScope) : exprType ]],
@@ -107,9 +116,10 @@ rules
     typeLookup [[ typeLiteral ^ (fieldScope) : fieldType ]],
     exprType <? fieldType,
     
-    Identifier { fieldName } <- instanceScope,
-    Identifier { fieldName } : Ref(fieldType),
-    Ref(fieldType) <! fieldType.
+    Identifier { fieldName } <- instanceScope3,
+    Identifier { fieldName } : Ref(fieldType, Identifier { fieldName }),
+    //Identifier { fieldName }.location := KArrayIndex(KIdentifier("this"), AddQuotes(fieldName)),
+    Ref(fieldType, Identifier { fieldName }) <! fieldType.
     
   
   [[ Declaration(typeLiteral, varName) ^ (methodScope) ]] :=
@@ -122,43 +132,48 @@ rules
   
   [[ Assignment(victim, valueExpr) ^ (methodScope) ]] :=
     [[ victim ^ (methodScope) : victimType ]],
-    victimType == Ref(refType) | note "Not a writable reference",
+    victimType == Ref(refType, _) | note "Not a writable reference",
     [[ valueExpr ^ (methodScope) : valueType ]],
     valueType <? refType.
   
   [[ DeclarationAssigned(typeLiteral, varName, valueExpr) ^ (methodScope) ]] :=
-    distinct/name D(methodScope)/Variable | note "Duplicate identifier" @NAMES,
+    distinct/name D(methodScope)/Variable | note "Duplicate identifier 3" @NAMES,
     Identifier { varName } <- methodScope,
     Identifier { varName } : Ref(varType),
     [[ valueExpr ^ (methodScope) : valType ]],
     typeLookup [[ typeLiteral ^ (methodScope) : varType ]],
     valType <? varType.
   
-  [[ Ref(Identifier(varName)) ^ (scope) : t ]] :=
-    getProperty [[ varName ^ (scope) : t ]].
+  //[[ Ref(Identifier(varName)) ^ (scope) : identifierRefType ]] :=
+  //  getProperty [[ varName ^ (scope) : identifierRefType ]].
   
-  [[ Identifier(varName) ^ (scope) : t ]] :=
-    getProperty [[ varName ^ (scope) : t ]].
+  [[ Identifier(varName) ^ (scope) : identifierType ]] :=
+    getProperty [[ varName ^ (scope) : identifierType ]].
   
   [[ Accessor(victim, _, propertyName) ^ (scope) : propertyType ]] :=
     
-    new s_use, s_use ---> scope,
-    
-    [[ victim ^ (s_use) : victimType2 ]],
-    getScope [[ victimType2 ^ () : victimScope ]],
+    [[ victim ^ (scope) : victimType ]],
+    victimScope is getScope of victimType,
+    new s_use, s_use ---> victimScope,
     getProperty [[ propertyName ^ (s_use) : propertyType ]].
 
   // TODO: check function arguments
   [[ FunctionCall(functor, _) ^ (scope) : outType ]] :=
     [[ functor ^ (scope) : Func(outType, _) ]].
  
-  getProperty [[ string ^ (scope) : t ]] :=
+  getProperty [[ string ^ (scope) : propertyType2 ]] :=
     Identifier { string } -> scope,
     Identifier { string } |-> declaration,
-    declaration : t !.
+    declaration : propertyType2 !.
   
-  getScope [[ Object(_, scope) ^ () : scope ]].
-  getScope [[ Class(_, scope) ^ () : scope ]].
+  //fetchScope [[ object ^ (scope) : 43 ]] :=
+  //	[[ object ^ (scope) : _ ]].
+  //getScope [[ object ^ (scope) : embeddedObjectScope ]] :=
+  //	[[ object ^ (scope) : objectScope ]],
+  //	objectScope == Object(_, embeddedObjectScope).
+  	
+  //getScope [[ object ^ (scope) : embeddedClassScope ]] :=
+  //	[[ object ^ (scope) : Class(_, embeddedClassScope) ]].
   
   [[ ExprInstruction(a) ^ (scope) ]] :=
   	[[ a ^ (scope) : _ ]].
@@ -179,10 +194,10 @@ rules
   [[ NumberLiteral(_) ^ (_) : Number() ]].
   [[ StringLiteral(_) ^ (_) : String() ]].
   
-  typeLookup [[ any ^ (s) : t ]] :=
+  typeLookup [[ any ^ (s) : lookupType ]] :=
     Type { any } -> s,
     Type { any } |-> declaration,
-    declaration : t !.
+    declaration : lookupType !.
 
 rules // instructions
 

@@ -3,7 +3,6 @@ class Test2 {
     number counter = 0;
 
     unit main() {
-    
-        counter = 9;
+    		this.counter = 4;
     }
 }
