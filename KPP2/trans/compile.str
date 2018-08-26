@@ -8,15 +8,26 @@ imports
   static-semantics
   kscript
   desugar
+  
+  pp
 
 rules // Desugar
 
-  rule-compile: (_, _, ast, path, project-path) -> (filename, result)
+  rule-compile-ast: (_, _, ast, path, project-path) -> (filename, result)
     where
        analysis := <nabl2-get-resource-analysis> $[[project-path]/[path]];
        <not(nabl2-analysis-has-errors)> analysis
     with filename := <guarantee-extension(|"k")> path
        ; result   := <strat-compile(|analysis)> ast
+       
+  rule-compile: (_, _, ast, path, project-path) -> (filename, result)
+    where
+       analysis := <nabl2-get-resource-analysis> $[[project-path]/[path]];
+       <not(nabl2-analysis-has-errors)> analysis
+    with filename := <guarantee-extension(|"k")> path
+       ; compiled-ast   := <strat-compile(|analysis)> ast
+       ; result := <pp-debug>compiled-ast
+  
    
 strategies
   strat-compile(|analysis) = strat-desugar; transform-kscript(|analysis)

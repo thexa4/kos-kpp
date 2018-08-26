@@ -1,21 +1,21 @@
-LegacyFile(
-  [ DesugaredClass(
-      "Test2"{TermIndex("test.kpp", 3)}
-    , [Field(NumberT(){TermIndex("test.kpp", 4)}, "counter"{TermIndex("test.kpp", 5)}, Legacy(KNumber("0"{TermIndex("test.kpp", 6)})))]
-    , [ Method(
-          UnitT(){TermIndex("test.kpp", 9)}
-        , "main"{TermIndex("test.kpp", 10)}
-        , [KDeclareParameter(None(), [KDefaultDefinition("this", None())], ".")]{TermIndex("test.kpp", 12)}
-        , [ LegacyBlock(
-              [KSet(
-                 Accessor(Identifier("this"{TermIndex("test.kpp", 13)}){TermIndex("test.kpp", 14)}, "."{TermIndex("test.kpp", 15)}, "counter"{TermIndex("test.kpp", 16)}){TermIndex("test.kpp", 17)}
-               , KNumber("4"{TermIndex("test.kpp", 18)})
-               , "."
-               )]
-            )
-          ]
-        )
-      ]
-    )
-  ]
-)
+declare global Test2  to lexicon( "new", {
+    set result to lexicon(  ).
+    {
+      set result[ "counter" ] to 0.
+      set result[ "prototype" ] to Test2.
+    }
+    return result.
+  }, "main", {
+     parameter this .
+    set this[ "counter" ] to 4.
+  } ) .
+declare global Test1  to lexicon( "new", {
+    set result to lexicon(  ).
+    {
+      set result[ "classvar" ] to Test2[ "new" ](  ).
+      set result[ "prototype" ] to Test1.
+    }
+    return result.
+  }, "main", {
+     parameter this .
+  } ) .

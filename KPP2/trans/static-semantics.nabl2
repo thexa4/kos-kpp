@@ -20,10 +20,13 @@ signature
   
   constructors
     Number : Type
-    AddQuotes : String -> Term
+    TemplateAddQuotes : String -> Term
+    TemplateConcat : String * String -> Term
+    TemplateVictim : Term
+    TemplateProperty : Term
     String : Type
-    Class : Type * scope -> Type
-    Object : Class * scope -> Type
+    Class : Type * scope * Declaration -> Type
+    Object : Class * scope * Declaration -> Type
     Dynamic : Type
     Func : list(Type) * Type -> Type
     Coerce : Type -> Type
@@ -37,8 +40,9 @@ signature
 
   functions
   
-    getScope : (Term * scope) -> scope {
-    	  Object(_, scope) -> scope
+    getScope : (Term) -> scope {
+    	  Object(_, scope, _) -> scope,
+    	  Class(_, scope, _) -> scope
     }
 
 rules
@@ -67,20 +71,23 @@ rules
     instanceScope1 ---> classScope,
   	
   	Identifier { className } <- topScope,
-  	Identifier { className } : Class(className, classScope),
+  	Identifier { className } : Class(className, classScope, Identifier { className }),
+  	Identifier { className }.accessor := KArrayIndex(TemplateVictim(), KString(TemplateAddQuotes(TemplateProperty()))),
+  	
+  	definition == Identifier { className },
   	Identifier { "new" } <- classScope,
-  	Identifier { "new" } : Func(Object(className, instanceScope1), []),
+  	Identifier { "new" } : Func(Object(className, instanceScope1, definition), []),
   	Type { CustomT(className) } <- topScope,
-  	Type { CustomT(className) } : Object(className, instanceScope1),
+  	Type { CustomT(className) } : Object(className, instanceScope1, definition),
   	
-  	Object(className, instanceScope1) <! Dynamic(),
-  	Func(Object(className, instanceScope1), []) <! Dynamic(),
+  	Object(className, instanceScope1, definition) <! Dynamic(),
+  	Func(Object(className, instanceScope1, definition), []) <! Dynamic(),
   	
-    Map2 [[ definitions ^ (Object(className, instanceScope1), classScope) ]].
+    Map2 [[ definitions ^ (Object(className, instanceScope1, definition), classScope) ]].
   
   [[ Method(methodType, methodName, parameters, methodInstructions) ^ (objectType, classScope) ]] :=
     distinct/name D(instanceScope2)/Identifier | note $[Duplicate identifier 2 [NAME]] @NAMES,
-    objectType == Object(_, instanceScope2),
+    objectType == Object(_, instanceScope2, _),
     //objectType == instanceScope2,
     
     Identifier { methodName } <- instanceScope2,
@@ -94,7 +101,7 @@ rules
     
     Identifier { "this" } <- methodScope,
     Identifier { "this" } : objectType,
-
+    
     Map1 [[ methodInstructions ^ (methodScope) ]].
   
   wrapInstruction [[ any ^ () : Instruction(any) ]].
@@ -108,7 +115,7 @@ rules
     
   [[ Field(typeLiteral, fieldName, fieldExpr) ^ (objectType, classScope) ]] :=
     distinct/name D(instanceScope3)/Identifier | note $[Duplicate identifier 3 [NAME]] @NAMES,
-    objectType == Object(_, instanceScope3),
+    objectType == Object(_, instanceScope3, _),
     
     new fieldScope, fieldScope ---> classScope,
     [[ fieldExpr ^ (fieldScope) : exprType ]],
@@ -118,6 +125,7 @@ rules
     
     Identifier { fieldName } <- instanceScope3,
     Identifier { fieldName } : Ref(fieldType, Identifier { fieldName }),
+    //Identifier { fieldName }.accessor := KArrayIndex(TemplateVictim(), AddQuotes(fieldName)),
     //Identifier { fieldName }.location := KArrayIndex(KIdentifier("this"), AddQuotes(fieldName)),
     Ref(fieldType, Identifier { fieldName }) <! fieldType.
     

@@ -20,9 +20,10 @@ menus
     
     action: "Format"          = editor-format (source)
     action: "Show parsed AST" = debug-show-aterm (source)
-    action: "Show analyzed AST" = debug-show-analyzed (source)
+    action: "Show analyzed AST" = debug-show-analyzed
     action: "Desugar"         = rule-desugar (source)
-    action: "Compile"         = rule-compile
+    action: "Compile to AST"         = rule-compile-ast
+    action: "Compile"		= rule-compile
 
 views
   

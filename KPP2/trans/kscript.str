@@ -13,7 +13,7 @@ imports
 strategies
   transform-kscript(|analysis) = innermost(legacy(|analysis))
   
-  fix-quotes = innermost(add-quotes)
+  fill-template(|victim, property) = innermost(fill-template-term(|victim, property))
   
 rules
   
@@ -26,51 +26,77 @@ rules
     //  analysis := <nabl2-get-ast-analysis; debug> any
     //  ; termParams := <nabl2-get-ast-type(|analysis)>
   
-  add-quotes: AddQuotes(inner) -> <conc-strings>("\"", inner, "\"")
-  
   //strip-types: Cast(_, a) -> a
   strip-legacy: Legacy(a) -> a
   
-  legacy(|analysis): NumberLiteral(a)					-> Legacy(KNumber(a))
-  legacy(|analysis): Div(Legacy(a), Legacy(b))	-> Legacy(KDiv(a, b))
+  legacy-expr(|analysis): NumberLiteral(a)					-> KNumber(a)
+  legacy-expr(|analysis): Div(Legacy(a), Legacy(b))	-> KDiv(a, b)
   
   legacy(|analysis): Declaration(_, name) 			-> LegacyBlock([KDeclareIdentifierUnscoped("declare", name, KDefaultPreset("to", KNumber("0")), ".")])
-  legacy(|analysis): Assignment(victim, Legacy(value)) 	-> LegacyBlock([KSet(<location-decode(|analysis)>victim, value, ".")])
+  legacy(|analysis): Assignment(victim, value) 	-> LegacyBlock([KSet(<legacy-expr(|analysis)>victim, <legacy-expr(|analysis)>value, ".")])
   //  with
   //    termParams := <nabl2-get-ast-type(|analysis)> victim
   
-  location-decode(|analysis): input@Identifier(content) -> fixed
+  legacy-expr(|analysis): FunctionCall(victim, args) -> KFunctionCall(<legacy-expr(|analysis)>victim, <map(legacy-expr(|analysis))>args)
+  
+  legacy-expr(|analysis): input@Identifier(content) -> KIdentifier(content)
+    //with
+    	//  identifierType := <nabl2-get-ast-type(|analysis)> input
+    	//  ; identifierDeclaration := <get-declaration> identifierType
+    	//  ; lookupTemplate := <nabl2-get-property(|analysis, "lookup")> identifierDeclaration
+    	//  ; lookup := <fill-template(|None(), None())> lookupTemplate
+  //  with
+  //    Ref(_, declaration) := <nabl2-get-ast-type(|analysis)> input
+  //    ; location := <nabl2-get-property(|analysis, "tmpacc")> declaration
+  //    ; fixed := <fix-quotes>(location)
+  legacy-expr(|analysis): input@Accessor(victim, _, property) -> result
     with
-      Ref(_, declaration) := <nabl2-get-ast-type(|analysis)> input
-      ; location := <nabl2-get-property(|analysis, "location")> declaration
-      ; fixed := <fix-quotes>(location)
-  location-decode(|analysis): rest -> rest
+      //Ref(_, declaration) := <nabl2-get-ast-type(|analysis)> input
+      //; accessorTemplate := <nabl2-get-property(|analysis, "accessor")> declaration
+      victimType := <nabl2-get-ast-type(|analysis)> victim
+      ; victimDeclaration := <get-declaration> victimType
+      ; locationTemplate := <nabl2-get-property(|analysis, "accessor")> victimDeclaration
+      ; expandedVictim := <legacy-expr(|analysis)> victim
+      ; result := <fill-template(|expandedVictim, property)> locationTemplate
+      ; <debug>expandedVictim
+  
+  get-declaration: Object(_, _, declaration) -> declaration
+  get-declaration: Class(_, _, declaration) -> declaration
+  
+  fill-template-term(|victim, property): TemplateAddQuotes(inner) -> <conc-strings>("\"", inner, "\"")
+  fill-template-term(|victim, property): TemplateConcat(a, b) -> <conc-strings>(a, b)
+  fill-template-term(|victim, property): TemplateVictim() -> victim
+  fill-template-term(|victim, property): TemplateProperty() -> property
+  
+  
+  
+  //location-decode(|analysis): rest -> rest
   
   //legacy(|analysis): input@Accessor(any, _, _) -> KIdentifier(any)
   
   
-  legacy(|analysis): ExprInstruction(Legacy(expr)) -> LegacyBlock(KExpression(expr))
-  legacy(|analysis): Add(Legacy(a), Legacy(b)) -> Legacy(KAdd(a, b))
+  legacy(|analysis): ExprInstruction(Legacy(expr)) -> LegacyBlock(KExpression(<legacy-expr(|analysis)>expr))
+  legacy-expr(|analysis): Add(Legacy(a), Legacy(b)) -> KAdd(a, b)
   
   //legacy(|analysis): Identifier(name) -> Legacy(KIdentifier(analysis)) // Todo, use type lookup
   //  with
   //    termParams := <nabl2-get-ast-type(|analysis)> Identifier(name)
   
-  legacy(|analysis): DesugaredClass(name, fields, methods) -> KDeclareIdentifierScoped("declare", "global", <conc-strings>("class_", name), KDefaultPreset("to",
+  legacy(|analysis): DesugaredClass(name, fields, methods) -> KDeclareIdentifierScoped("declare", "global", name, KDefaultPreset("to",
       KFunctionCall(KIdentifier("lexicon"), <flatten-list> ["\"new\"", KAnonymousFunction([
         KSet(KIdentifier("result"), KFunctionCall(KIdentifier("lexicon"), []), "."),
       	KBlock(<flatten-list> [
       		<map(initialize-class(|analysis))> fields,
-      		KSet(KArrayIndex(KIdentifier("result"), KString("\"prototype\"")), KIdentifier(<conc-strings>("class_", name)), ".")
+      		KSet(KArrayIndex(KIdentifier("result"), KString("\"prototype\"")), KIdentifier(name), ".")
       	]),
       	KReturn(Some(KIdentifier("result")), ".")
       ]), <map(define-methods)> methods])
     ), ".")
     
-  initialize-class(|analysis): Field(_, name, value) -> KSet(KArrayIndex(KIdentifier("result"), KString(<conc-strings>("\"", name, "\""))), <strip-legacy; innermost(legacy(|analysis))> value, ".")
+  initialize-class(|analysis): Field(_, name, value) -> KSet(KArrayIndex(KIdentifier("result"), KString(<conc-strings>("\"", name, "\""))), <legacy-expr(|analysis)> value, ".")
   
   define-methods: Method(_, name, params, instructions) -> [KString(<conc-strings>("\"", name, "\"")), KAnonymousFunction(<flatten-list>[params, [<flatten-legacy-blocks>instructions]])]
-    where not( <?[LegacyBlock(_)]> instructions)
+    //where not( <?[LegacyBlock(_)]> instructions)
   
   legacy(|analysis): Parameter(_, name) -> KDeclareParameter(None(), [KDefaultDefinition(name, None())], ".")
   

@@ -6,3 +6,11 @@ class Test2 {
     		this.counter = 4;
     }
 }
+
+class Test1 {
+	Test2 classvar = Test2.new();
+	
+	unit main() {
+	
+	}
+}
