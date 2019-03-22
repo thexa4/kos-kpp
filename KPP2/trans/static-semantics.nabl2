@@ -20,6 +20,7 @@ signature
   
   constructors
     Number : Type
+    Bool : Type
     TemplateAddQuotes : String -> Term
     TemplateConcat : String * String -> Term
     TemplateVictim : Term
@@ -30,7 +31,8 @@ signature
     Dynamic : Type
     Func : list(Type) * Type -> Type
     Coerce : Type -> Type
-    Ref : Type * Term -> Type
+    //Ref(type, writable?, reference, declaration) 
+    Ref : Type * Term * occurrence * occurrence -> Type
     Unit : Type
     Instruction : Type -> Type
 
@@ -43,6 +45,11 @@ signature
     getScope : (Term) -> scope {
     	  Object(_, scope, _) -> scope,
     	  Class(_, scope, _) -> scope
+    }
+    
+    unRef : (Term) -> term {
+    	Ref(a, _, _, _) -> a,
+    	b -> b
     }
 
 rules
@@ -57,7 +64,12 @@ rules
     
     Type { NumberT() } <- topScope,
     Type { NumberT() } : Number(),
+    
+    Type { BoolT() } <- topScope,
+    Type { BoolT() } : Bool(),
+    
     Number() <! Dynamic(),
+    Bool() <! Dynamic(),
     
     Map1 [[ classes ^ (topScope) ]].
     
@@ -97,10 +109,11 @@ rules
     Func(paramTypes, methodType) <! Dynamic(),
 
     new methodScope,
-    methodScope ---> classScope,
+    methodScope ---> instanceScope2,
     
     Identifier { "this" } <- methodScope,
-    Identifier { "this" } : objectType,
+    Identifier { "this" } : Ref(objectType, "readonly", None(), Identifier { "this" }),
+    Identifier { "this" }.accessor := KArrayIndex(TemplateVictim(), KString(TemplateAddQuotes(TemplateProperty()))),
     
     Map1 [[ methodInstructions ^ (methodScope) ]].
   
@@ -124,30 +137,30 @@ rules
     exprType <? fieldType,
     
     Identifier { fieldName } <- instanceScope3,
-    Identifier { fieldName } : Ref(fieldType, Identifier { fieldName }),
+    Identifier { fieldName } : Ref(fieldType, "writable", None(), Identifier { fieldName }),
     //Identifier { fieldName }.accessor := KArrayIndex(TemplateVictim(), AddQuotes(fieldName)),
     //Identifier { fieldName }.location := KArrayIndex(KIdentifier("this"), AddQuotes(fieldName)),
-    Ref(fieldType, Identifier { fieldName }) <! fieldType.
+    Ref(fieldType, "writable", None(), Identifier { fieldName }) <! fieldType.
     
   
   [[ Declaration(typeLiteral, varName) ^ (methodScope) ]] :=
     distinct/name D(methodScope)/Variable | note "Duplicate identifier - foo42" @NAMES,
     Identifier { varName } <- methodScope,
-    Identifier { varName } : Ref(varType),
+    Identifier { varName } : Ref(varType, "writable", None(), Identifier { varName }),
     Ref(varType) <! varType,
     Identifier { varName } genOf varType,
     typeLookup [[ typeLiteral ^ (methodScope) : varType ]].
   
   [[ Assignment(victim, valueExpr) ^ (methodScope) ]] :=
     [[ victim ^ (methodScope) : victimType ]],
-    victimType == Ref(refType, _) | note "Not a writable reference",
+    victimType == Ref(refType, "writable", _, _) | note "Not a writable reference",
     [[ valueExpr ^ (methodScope) : valueType ]],
     valueType <? refType.
   
   [[ DeclarationAssigned(typeLiteral, varName, valueExpr) ^ (methodScope) ]] :=
     distinct/name D(methodScope)/Variable | note "Duplicate identifier 3" @NAMES,
     Identifier { varName } <- methodScope,
-    Identifier { varName } : Ref(varType),
+    Identifier { varName } : Ref(varType, "writable", None(), Identifier { varName }),
     [[ valueExpr ^ (methodScope) : valType ]],
     typeLookup [[ typeLiteral ^ (methodScope) : varType ]],
     valType <? varType.
@@ -161,8 +174,10 @@ rules
   [[ Accessor(victim, _, propertyName) ^ (scope) : propertyType ]] :=
     
     [[ victim ^ (scope) : victimType ]],
-    victimScope is getScope of victimType,
+    victimUnref is unRef of victimType,
+    victimScope is getScope of victimUnref,
     new s_use, s_use ---> victimScope,
+    //propertyType == victimScope.
     getProperty [[ propertyName ^ (s_use) : propertyType ]].
 
   // TODO: check function arguments
@@ -172,7 +187,9 @@ rules
   getProperty [[ string ^ (scope) : propertyType2 ]] :=
     Identifier { string } -> scope,
     Identifier { string } |-> declaration,
-    declaration : propertyType2 !.
+    declaration : declarationType !,
+    declarationType == Ref(refType, writable, _, declaration),
+    propertyType2 == Ref(refType, writable, Identifier { string }, declaration).
   
   //fetchScope [[ object ^ (scope) : 43 ]] :=
   //	[[ object ^ (scope) : _ ]].
@@ -201,11 +218,19 @@ rules
   
   [[ NumberLiteral(_) ^ (_) : Number() ]].
   [[ StringLiteral(_) ^ (_) : String() ]].
+  [[ TrueLiteral() ^ (_) : Bool() ]].
+  [[ FalseLiteral() ^ (_) : Bool() ]].
   
   typeLookup [[ any ^ (s) : lookupType ]] :=
     Type { any } -> s,
     Type { any } |-> declaration,
     declaration : lookupType !.
+
+  [[ If(expr, instructions) ^ (scope) ]] :=
+  	[[ expr ^ (scope) : exprType ]],
+  	exprType <? Bool(),
+  	new ifScope, ifScope ---> scope,
+  	Map1 [[ instructions ^ (ifScope) ]].
 
 rules // instructions
 

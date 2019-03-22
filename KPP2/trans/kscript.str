@@ -29,6 +29,8 @@ rules
   //strip-types: Cast(_, a) -> a
   strip-legacy: Legacy(a) -> a
   
+  legacy-expr(|analysis): FalseLiteral()					-> KFalse()
+  legacy-expr(|analysis): TrueLiteral()						-> KTrue()
   legacy-expr(|analysis): NumberLiteral(a)					-> KNumber(a)
   legacy-expr(|analysis): Div(Legacy(a), Legacy(b))	-> KDiv(a, b)
   
@@ -58,10 +60,11 @@ rules
       ; locationTemplate := <nabl2-get-property(|analysis, "accessor")> victimDeclaration
       ; expandedVictim := <legacy-expr(|analysis)> victim
       ; result := <fill-template(|expandedVictim, property)> locationTemplate
-      ; <debug>expandedVictim
+      ; <pp-debug>result
   
-  get-declaration: Object(_, _, declaration) -> declaration
-  get-declaration: Class(_, _, declaration) -> declaration
+  //get-declaration: Object(_, _, declaration) -> declaration
+  //get-declaration: Class(_, _, declaration) -> declaration
+  get-declaration: Ref(_, _, _, declaration) -> declaration
   
   fill-template-term(|victim, property): TemplateAddQuotes(inner) -> <conc-strings>("\"", inner, "\"")
   fill-template-term(|victim, property): TemplateConcat(a, b) -> <conc-strings>(a, b)
@@ -75,7 +78,7 @@ rules
   //legacy(|analysis): input@Accessor(any, _, _) -> KIdentifier(any)
   
   
-  legacy(|analysis): ExprInstruction(Legacy(expr)) -> LegacyBlock(KExpression(<legacy-expr(|analysis)>expr))
+  legacy(|analysis): ExprInstruction(expr) -> LegacyBlock(KExpression(<legacy-expr(|analysis)>expr))
   legacy-expr(|analysis): Add(Legacy(a), Legacy(b)) -> KAdd(a, b)
   
   //legacy(|analysis): Identifier(name) -> Legacy(KIdentifier(analysis)) // Todo, use type lookup
@@ -85,13 +88,16 @@ rules
   legacy(|analysis): DesugaredClass(name, fields, methods) -> KDeclareIdentifierScoped("declare", "global", name, KDefaultPreset("to",
       KFunctionCall(KIdentifier("lexicon"), <flatten-list> ["\"new\"", KAnonymousFunction([
         KSet(KIdentifier("result"), KFunctionCall(KIdentifier("lexicon"), []), "."),
-      	KBlock(<flatten-list> [
+      	KBlock(<flatten-list>[
       		<map(initialize-class(|analysis))> fields,
-      		KSet(KArrayIndex(KIdentifier("result"), KString("\"prototype\"")), KIdentifier(name), ".")
-      	]),
+      		[ KSet(KArrayIndex(KIdentifier("result"), KString("\"prototype\"")), KIdentifier(name), ".") ]
+      		]
+      	),
       	KReturn(Some(KIdentifier("result")), ".")
       ]), <map(define-methods)> methods])
     ), ".")
+    
+  //legacy(|analysis): DesugaredClass(name, fields, methods) -> KBlock(<map(define-methods)>methods)
     
   initialize-class(|analysis): Field(_, name, value) -> KSet(KArrayIndex(KIdentifier("result"), KString(<conc-strings>("\"", name, "\""))), <legacy-expr(|analysis)> value, ".")
   

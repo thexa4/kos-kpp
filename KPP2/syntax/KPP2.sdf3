@@ -42,6 +42,7 @@ context-free syntax
   Type.NumberT = [number]
   Type.StringT = [string]
   Type.StructureT = [struct]
+  Type.BoolT = [bool]
   Type.UnitT = [unit]
   Type.DynamicT = [dynamic]
   Type.TypeT = [type]
@@ -64,13 +65,17 @@ context-free syntax
   Instruction.YieldExit = [yield [Expr];]
   Instruction.YieldNext = [yield [Expr] -> [ID];]
   Instruction.ExprInstruction = [[Expr];]
-  
+  Instruction.If = [if [Expr] {
+  	[{Instruction "\n"}*]
+  }]
 context-free syntax
   Expr = [([Expr])] {bracket}
   Expr.Legacy = [_legacy( [KExpr] )]
   Expr.Cast = [([Type])[Expr]]
   Expr.StringLiteral = [[STRING]]
   Expr.NumberLiteral = [[NUMBER]]
+  Expr.TrueLiteral = [true]
+  Expr.FalseLiteral = [false]
   
   Expr.Accessor = [[Expr][DOT][ID]] {left}
   

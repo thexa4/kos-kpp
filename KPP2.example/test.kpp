@@ -1,16 +1,20 @@
-class Test2 {
-    
-    number counter = 0;
+class PlaneController {
+	bool isTakingOff = false;
 
-    unit main() {
-    		this.counter = 4;
-    }
-}
-
-class Test1 {
-	Test2 classvar = Test2.new();
-	
-	unit main() {
-	
+	unit TakeOff() {
+		isTakingOff;
 	}
+	/*
+	unit Update() {
+		if this.isTakingOff {
+			number airspeed = (number)_legacy(Vessel:Airspeed);
+			extern "KOS" {
+				print airspeed.
+			}
+			
+			if airspeed > 60 {
+				
+			}
+		}
+	}*/
 }
